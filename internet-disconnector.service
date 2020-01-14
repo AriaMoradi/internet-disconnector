@@ -1,0 +1,14 @@
+[Unit]
+Description=Internet Parental Control Service to prevent internet abuse by disconnecting it at night
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+ExecStart=/usr/bin/python3 /usr/bin/internet_disconnector.py
+
+[Install]
+WantedBy=multi-user.target
