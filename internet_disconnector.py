@@ -1,9 +1,10 @@
 from time import sleep
+import traceback
 
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from datetime import datetime
@@ -26,15 +27,23 @@ class ParentalControlController:
     def __init__(self):
         options = Options()
         options.headless = True
-        options.add_argument("window-size=1920,1080")
+        options.add_argument("start-maximized");
+        options.add_argument("disable-infobars");
+        options.add_argument("--disable-extensions");
+        options.add_argument("--disable-gpu");
+        options.add_argument("--disable-dev-shm-usage");
+        options.add_argument("--no-sandbox");
 
-        self.driver = webdriver.Firefox(options=options)
+        self.driver = webdriver.Chrome(options=options)
         self._patch_driver()
 
         self.is_at_the_parental_control_page = False
 
     def __del__(self):
-        self.driver.quit()
+        if getattr(self, "driver", False):
+            # print("driver found")
+            self.driver.quit()
+        # print("no driver found")
 
     def set_parental_control_to(self, status):
         if self.is_enabled() != status:
@@ -89,15 +98,15 @@ class Printer:
     def print_we_just_changed_state(now, parental_control):
         print(
             PROGRAM_PREFIX +
-            f"parental control is set to {parental_control.is_enabled_str()},"
-            f" now is " + now.__str__()
+            "parental control is set to {},".format(parental_control.is_enabled_str()) +
+            " now is " + now.__str__()
         )
 
     @staticmethod
     def print_we_are_idle(now, parental_controller):
         print(
             PROGRAM_PREFIX +
-            f"going to sleep for {SLEEP_TIME} secs, now is " + now.__str__() +
+            "going to sleep for {} secs, now is ".format(SLEEP_TIME) + now.__str__() +
             "  parental control is:" + parental_controller.is_enabled_str()
         )
 
@@ -105,7 +114,7 @@ class Printer:
     def print_we_just_started(now, parental_controller):
         print(
             PROGRAM_PREFIX +
-            f"program started, now is " + now.__str__() +
+            "program started, now is " + now.__str__() +
             "  parental control set to:" + parental_controller.is_enabled_str()
         )
 
@@ -115,8 +124,7 @@ class Printer:
 
 
 def idle(now: datetime, parental_controller: ParentalControlController):
-    Printer.print_we_are_idle(now, parental_controller)
-    sleep(SLEEP_TIME)
+    pass
 
 
 def internet_should_be_disconnected(now: datetime):
@@ -127,7 +135,7 @@ def main():
     parental_control = ParentalControlController()
     parental_control_state = parental_control.is_enabled()
     Printer.print_we_just_started(datetime.now(), parental_control)
-    parental_control.__del__()
+    parental_control.driver.quit()
 
     while True:
         try:
@@ -135,23 +143,23 @@ def main():
             now = datetime.now()
 
             if internet_should_be_disconnected(now) and parental_control_state == ParentalControlController.DISABLED:
-                parental_control = ParentalControlController()
                 parental_control_state = parental_control.set_parental_control_to(ParentalControlController.ENABLED)
                 Printer.print_we_just_changed_state(now, parental_control)
 
             elif not internet_should_be_disconnected(now) and \
                     parental_control_state == ParentalControlController.ENABLED:
-                parental_control = ParentalControlController()
                 parental_control_state = parental_control.set_parental_control_to(ParentalControlController.DISABLED)
                 Printer.print_we_just_changed_state(now, parental_control)
 
-            idle(now, parental_control)
-            parental_control.__del__()
+            Printer.print_we_are_idle(now, parental_control)
+            parental_control.driver.quit()
+            sleep(SLEEP_TIME)
         except Exception as e:
             Printer.print_exception(e)
-            parental_control.__del__()
+            traceback.print_stack()
+            parental_control.driver.quit()
         finally:
-            parental_control.__del__()
+            parental_control.driver.quit()
 
 
 if __name__ == "__main__":
